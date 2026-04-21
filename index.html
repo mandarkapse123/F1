@@ -628,13 +628,25 @@ const setStatus = (state, msg) => {
   document.getElementById('dateline').textContent = D[now.getDay()]+' · '+String(now.getDate()).padStart(2,'0')+' '+MONTHS[now.getMonth()]+' · '+now.getFullYear();
 })();
 
+
 /* ── Countdown ── */
-function startCD(target) {
+function startCD(target, sessionName) {
   if(_cdInt) clearInterval(_cdInt);
+  
+  // Update the label to show exactly which session we are counting down to
+  const labelEl = document.querySelector('.countdown-label');
+  if (labelEl) labelEl.innerHTML = `Next Session: ${sessionName} In`;
+
   const pad = n=>String(Math.max(0,n)).padStart(2,'0');
   const tick = () => {
     const d = target - Date.now();
-    if(d<=0){['cd-d','cd-h','cd-m','cd-s'].forEach(id=>document.getElementById(id).textContent='00');clearInterval(_cdInt);return;}
+    if(d<=0){
+      ['cd-d','cd-h','cd-m','cd-s'].forEach(id=>document.getElementById(id).textContent='00');
+      clearInterval(_cdInt);
+      // Automatically refresh the dashboard when a session starts
+      setTimeout(() => loadAll(false), 5000); 
+      return;
+    }
     document.getElementById('cd-d').textContent=pad(Math.floor(d/86400000));
     document.getElementById('cd-h').textContent=pad(Math.floor((d%86400000)/3600000));
     document.getElementById('cd-m').textContent=pad(Math.floor((d%3600000)/60000));
@@ -643,6 +655,64 @@ function startCD(target) {
   tick(); _cdInt = setInterval(tick,1000);
 }
 
+/* ── NEXT RACE & SESSION LOGIC ── */
+function renderNextRace(data) {
+  const races = data?.MRData?.RaceTable?.Races || [];
+  const now = new Date();
+
+  // 1. Find the next upcoming race weekend
+  const nextRace = races.find(r => new Date(r.date + 'T' + (r.time || '12:00:00Z')) > now);
+
+  if (!nextRace) {
+    document.getElementById('next-name').innerHTML = 'Season <em>Complete</em>';
+    return;
+  }
+
+  // 2. Extract all individual sessions for this weekend
+  const sessions = [];
+
+  const addSession = (name, obj) => {
+    if (obj && obj.date && obj.time) {
+      sessions.push({ name: name, time: new Date(obj.date + 'T' + obj.time).getTime() });
+    }
+  };
+
+  addSession('FP1', nextRace.FirstPractice);
+  addSession('FP2', nextRace.SecondPractice);
+  addSession('FP3', nextRace.ThirdPractice);
+  addSession('Qualifying', nextRace.Qualifying);
+  addSession('Sprint Shootout', nextRace.SprintShootout);
+  addSession('Sprint', nextRace.Sprint);
+  
+  if (nextRace.date && nextRace.time) {
+    sessions.push({ name: 'Race', time: new Date(nextRace.date + 'T' + nextRace.time).getTime() });
+  }
+
+  // 3. Find the closest session that is in the future
+  sessions.sort((a, b) => a.time - b.time);
+  const nextSession = sessions.find(s => s.time > now.getTime());
+
+  // Fallbacks just in case the API is missing session data
+  const targetTime = nextSession ? nextSession.time : new Date(nextRace.date + 'T' + (nextRace.time || '14:00:00Z')).getTime();
+  const targetName = nextSession ? nextSession.name : 'Race';
+
+  // Start the countdown
+  startCD(targetTime, targetName);
+
+  // Update UI Elements
+  document.getElementById('next-round-lbl').textContent = `◆ Round ${nextRace.round} of ${races.length} · Up Next`;
+  document.getElementById('next-flag').textContent = cf(nextRace.Circuit?.Location?.country || '');
+  document.getElementById('next-name').innerHTML = nextRace.raceName.replace(' Grand Prix', '').trim() + ' <em>Grand Prix</em>';
+  document.getElementById('next-circuit').textContent = nextRace.Circuit?.circuitName || '';
+
+  // Format the date/time natively to Indian Standard Time (IST)
+  const localDate = new Date(targetTime);
+  const timeOptions = { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+  
+  document.getElementById('next-info').textContent = localDate.toLocaleString('en-IN', timeOptions);
+  document.getElementById('next-dates').textContent = MONTHS[localDate.getMonth()] + ' ' + String(localDate.getDate()).padStart(2, '0');
+  document.getElementById('next-round-num').textContent = `R${nextRace.round}/${races.length}`;
+}
 /* ════════════════════════════════════
    JOLPICA API
 ════════════════════════════════════ */
@@ -955,7 +1025,76 @@ function fallbackNews(label) {
 function stripHtml(h){const d=document.createElement('div');d.innerHTML=h;return d.textContent||d.innerText||'';}
 function timeSince(d){const m=Math.floor((Date.now()-d)/60000);if(m<1)return'Just now';if(m<60)return m+'m ago';const hr=Math.floor(m/60);if(hr<24)return hr+'h ago';return Math.floor(hr/24)+'d ago';}
 
-/* ── BOOT ── */
+/* ════════════════════════════════════
+   LIVE TELEMETRY (Render WebSocket)
+════════════════════════════════════ */
+// NOTE: Change 'https://' to 'wss://' for WebSockets
+const WS_URL = 'wss://f1-uso2.onrender.com/ws/telemetry';
+let telemetrySocket;
+
+function connectTelemetry() {
+  console.log('[Telemetry] Attempting to connect...');
+  telemetrySocket = new WebSocket(WS_URL);
+
+  telemetrySocket.onopen = () => {
+    console.log('[Telemetry] Connected to live stream');
+    // Update the top API bar to show we are connected to live telemetry
+    setStatus('live', `Live · Telemetry Connected · ${new Date().toLocaleTimeString()}`);
+  };
+
+  telemetrySocket.onmessage = (event) => {
+    try {
+      const payload = JSON.parse(event.data);
+      
+      // Check if we received telemetry data for Lewis (driver number 44)
+      if (payload.type === 'telemetry' && payload.data['44']) {
+        const hamData = payload.data['44'];
+        
+        // Inject the live telemetry into the Ticker!
+        updateLiveTicker(hamData);
+      }
+    } catch(e) {
+      console.warn('[Telemetry] Error parsing data:', e);
+    }
+  };
+
+  telemetrySocket.onclose = () => {
+    console.warn('[Telemetry] Connection lost. Reconnecting in 5 seconds...');
+    setStatus('err', 'Telemetry disconnected. Reconnecting...');
+    setTimeout(connectTelemetry, 5000); // Auto-reconnect
+  };
+  
+  telemetrySocket.onerror = (err) => {
+    console.error('[Telemetry] WebSocket Error:', err);
+  };
+}
+
+function updateLiveTicker(data) {
+  const track = document.getElementById('tkTrack');
+  
+  // Create a high-priority ticker item for live data
+  const liveTick = `
+    <span class="tick">
+      <span class="sym" style="color:#22c55e">LIVE 44</span>
+      <span class="val">${data.speed} KM/H</span>
+      <span class="pts">GEAR ${data.gear} · THR ${data.throttle}%</span>
+    </span>
+    <span class="tick tick-dot">◆</span>
+  `;
+  
+  // If we haven't added the live telemetry ticker slot yet, prepend it
+  if (!track.innerHTML.includes('LIVE 44')) {
+    track.innerHTML = liveTick + track.innerHTML;
+  } else {
+    // Update the existing live ticker slot using a quick regex replace
+    track.innerHTML = track.innerHTML.replace(
+      /<span class="sym" style="color:#22c55e">LIVE 44<\/span>.*?<span class="tick tick-dot">◆<\/span>/s, 
+      liveTick
+    );
+  }
+}
+  
+  /* ── BOOT ── */
 loadAll();
 setInterval(()=>loadAll(false), 5*60*1000); // refresh every 5 min
 </script>
