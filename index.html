@@ -2000,6 +2000,11 @@ async function loadAll(manual=false) {
 
   if(D) enrichStats();
   loadNews();
+  
+  // 👉 THESE 3 LINES TURN ON THE NEW FEATURES
+  renderConstructorsChart();
+  renderQualiH2H();
+  fetchOpenF1Tyres();
 }
 
 /* ── CALENDAR ── */
@@ -2028,24 +2033,6 @@ function renderCalendar(data) {
     strip.appendChild(div);
   });
   setTimeout(()=>{const n=strip.querySelector('.cal-round.next');if(n)strip.scrollTo({left:n.offsetLeft-60,behavior:'smooth'});},2000);
-}
-
-/* ── NEXT RACE ── */
-function renderNextRace(data) {
-  const races=data?.MRData?.RaceTable?.Races||[];
-  const now=new Date();
-  const next=races.find(r=>new Date(r.date+'T'+(r.time||'12:00:00Z'))>now);
-  if(!next){document.getElementById('next-name').innerHTML='Season <em>Complete</em>';return;}
-  const rt=new Date(next.date+'T'+(next.time||'14:00:00Z'));
-  startCD(rt.getTime());
-  document.getElementById('next-round-lbl').textContent=`◆ Round ${next.round} of ${races.length} · Up Next`;
-  document.getElementById('next-flag').textContent=cf(next.Circuit?.Location?.country||'');
-  document.getElementById('next-name').innerHTML=next.raceName.replace(' Grand Prix','').trim()+' <em>Grand Prix</em>';
-  document.getElementById('next-circuit').textContent=next.Circuit?.circuitName||'';
-  document.getElementById('next-info').textContent=`${next.Circuit?.Location?.locality||''}, ${next.Circuit?.Location?.country||''}`;
-  const d=new Date(next.date);
-  document.getElementById('next-dates').textContent=MONTHS[d.getUTCMonth()]+' '+String(d.getUTCDate()).padStart(2,'0');
-  document.getElementById('next-round-num').textContent=`R${next.round}/${races.length}`;
 }
 
 /* ── DRIVER STANDINGS ── */
@@ -2272,7 +2259,6 @@ function timeSince(d){const m=Math.floor((Date.now()-d)/60000);if(m<1)return'Jus
 /* ════════════════════════════════════
    LIVE TELEMETRY (Render WebSocket)
 ════════════════════════════════════ */
-// NOTE: Change 'https://' to 'wss://' for WebSockets
 const WS_URL = 'wss://f1-uso2.onrender.com/ws/telemetry';
 let telemetrySocket;
 
@@ -2282,19 +2268,14 @@ function connectTelemetry() {
 
   telemetrySocket.onopen = () => {
     console.log('[Telemetry] Connected to live stream');
-    // Update the top API bar to show we are connected to live telemetry
     setStatus('live', `Live · Telemetry Connected · ${new Date().toLocaleTimeString()}`);
   };
 
   telemetrySocket.onmessage = (event) => {
     try {
       const payload = JSON.parse(event.data);
-      
-      // Check if we received telemetry data for Lewis (driver number 44)
       if (payload.type === 'telemetry' && payload.data['44']) {
         const hamData = payload.data['44'];
-        
-        // Inject the live telemetry into the Ticker!
         updateLiveTicker(hamData);
       }
     } catch(e) {
@@ -2305,7 +2286,7 @@ function connectTelemetry() {
   telemetrySocket.onclose = () => {
     console.warn('[Telemetry] Connection lost. Reconnecting in 5 seconds...');
     setStatus('err', 'Telemetry disconnected. Reconnecting...');
-    setTimeout(connectTelemetry, 5000); // Auto-reconnect
+    setTimeout(connectTelemetry, 5000); 
   };
   
   telemetrySocket.onerror = (err) => {
@@ -2315,8 +2296,6 @@ function connectTelemetry() {
 
 function updateLiveTicker(data) {
   const track = document.getElementById('tkTrack');
-  
-  // Create a high-priority ticker item for live data
   const liveTick = `
     <span class="tick">
       <span class="sym" style="color:#22c55e">LIVE 44</span>
@@ -2325,12 +2304,9 @@ function updateLiveTicker(data) {
     </span>
     <span class="tick tick-dot">◆</span>
   `;
-  
-  // If we haven't added the live telemetry ticker slot yet, prepend it
   if (!track.innerHTML.includes('LIVE 44')) {
     track.innerHTML = liveTick + track.innerHTML;
   } else {
-    // Update the existing live ticker slot using a quick regex replace
     track.innerHTML = track.innerHTML.replace(
       /<span class="sym" style="color:#22c55e">LIVE 44<\/span>.*?<span class="tick tick-dot">◆<\/span>/s, 
       liveTick
@@ -2338,9 +2314,9 @@ function updateLiveTicker(data) {
   }
 }
   
-  /* ── BOOT ── */
+/* ── BOOT ── */
+// 👉 THIS IS THE CRITICAL MISSING LINE
+connectTelemetry(); 
 loadAll();
-setInterval(()=>loadAll(false), 5*60*1000); // refresh every 5 min
+setInterval(()=>loadAll(false), 5*60*1000); 
 </script>
-</body>
-</html>
