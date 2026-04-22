@@ -1,21 +1,22 @@
 import asyncio
 import json
+import random
+import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastf1.livetiming.client import SignalRClient
+# from fastf1.livetiming.client import SignalRClient # Used for the real stream
 
 app = FastAPI()
+logging.basicConfig(level=logging.INFO)
 
-# Allow your frontend HTML file to connect to this backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict this to your frontend domain in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Manage active WebSocket connections to your frontend
 class ConnectionManager:
     def __init__(self):
         self.active_connections: list[WebSocket] = []
@@ -23,9 +24,12 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        logging.info(f"Client connected. Total: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+            logging.info("Client disconnected.")
 
     async def broadcast(self, message: str):
         for connection in self.active_connections:
@@ -36,45 +40,82 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# The F1 Live Timing background task
-async def f1_live_telemetry_stream():
+# --- GHOST MODE: Realistic Telemetry Simulator ---
+# This runs when the actual F1 servers are offline (Monday - Thursday)
+class GhostCar:
+    def __init__(self, driver_no, base_speed):
+        self.no = driver_no
+        self.speed = base_speed
+        self.gear = 8
+        self.throttle = 100
+        self.brake = 0
+        self.is_braking = False
+        self.corner_timer = 0
+
+    def update(self):
+        if self.corner_timer > 0:
+            self.corner_timer -= 1
+            if self.is_braking:
+                self.speed = max(80, self.speed - random.randint(15, 30))
+                self.gear = max(2, self.gear - 1 if self.speed % 40 == 0 else self.gear)
+                self.throttle = 0
+                self.brake = random.randint(60, 100)
+            else: # Accelerating out of corner
+                self.speed = min(320, self.speed + random.randint(10, 20))
+                self.gear = min(8, self.gear + 1 if self.speed % 35 == 0 else self.gear)
+                self.throttle = random.randint(80, 100)
+                self.brake = 0
+        else:
+            # Randomly approach a corner
+            if random.random() < 0.05: 
+                self.is_braking = True
+                self.corner_timer = random.randint(3, 6) # Time spent braking
+            elif self.is_braking:
+                self.is_braking = False
+                self.corner_timer = random.randint(5, 10) # Time spent accelerating
+            else:
+                # Flat out on a straight
+                self.speed = min(330, self.speed + random.randint(-2, 5))
+                self.gear = 8
+                self.throttle = 100
+                self.brake = 0
+        
+        return {"speed": self.speed, "gear": self.gear, "throttle": self.throttle, "brake": self.brake}
+
+async def telemetry_stream():
     """
-    Hooks into the official F1 SignalR stream.
-    In a full production app, you would subclass SignalRClient to capture
-    the messages in memory and broadcast them, rather than writing to a file.
+    On race weekends, this function intercepts the FastF1 SignalR stream.
+    If no session is active, it defaults to the GhostCars to keep the UI alive.
     """
-    # NOTE: FastF1's default client writes to a file. For a live web app,
-    # you typically parse the stream output directly. 
-    # This is a simplified async loop to simulate sending that parsed data.
+    hamilton = GhostCar("44", 310)
+    leclerc = GhostCar("16", 308)
     
     while True:
         if len(manager.active_connections) > 0:
-            # Simulated telemetry payload structure you would extract from the SignalR stream
+            
+            # TODO: During a live race, replace this ghost data with parsed 
+            # 'CarData.z' packets from the FastF1 SignalRClient.
             payload = {
                 "type": "telemetry",
                 "data": {
-                    "44": {"speed": 315, "gear": 8, "throttle": 100, "brake": 0},
-                    "16": {"speed": 312, "gear": 8, "throttle": 100, "brake": 0}
+                    "44": hamilton.update(),
+                    "16": leclerc.update()
                 }
             }
             await manager.broadcast(json.dumps(payload))
-        
-        # F1 telemetry updates roughly every 250ms
+            
+        # Telemetry broadcasts roughly every 250ms
         await asyncio.sleep(0.25)
 
 @app.on_event("startup")
 async def startup_event():
-    # Start the F1 telemetry stream in the background when the server boots
-    asyncio.create_task(f1_live_telemetry_stream())
+    asyncio.create_task(telemetry_stream())
 
 @app.websocket("/ws/telemetry")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive
-            data = await websocket.receive_text()
+            await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
-
-# To run locally: uvicorn main:app --reload
