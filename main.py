@@ -4,7 +4,6 @@ import random
 import logging
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-# from fastf1.livetiming.client import SignalRClient # Used for the real stream
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -40,10 +39,8 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# --- GHOST MODE: Realistic Telemetry Simulator ---
-# This runs when the actual F1 servers are offline (Monday - Thursday)
 class GhostCar:
-    def __init__(self, driver_no, base_speed):
+    def __init__(self, driver_no, base_speed, start_distance=0.0):
         self.no = driver_no
         self.speed = base_speed
         self.gear = 8
@@ -51,8 +48,14 @@ class GhostCar:
         self.brake = 0
         self.is_braking = False
         self.corner_timer = 0
+        
+        # --- NEW: Positional Tracking ---
+        self.lap = 1
+        self.distance = start_distance 
+        self.track_length = 5793.0 # Approx length of Monza in meters
 
     def update(self):
+        # 1. Calculate Speed & Gear changes (Braking/Accelerating)
         if self.corner_timer > 0:
             self.corner_timer -= 1
             if self.is_braking:
@@ -60,41 +63,53 @@ class GhostCar:
                 self.gear = max(2, self.gear - 1 if self.speed % 40 == 0 else self.gear)
                 self.throttle = 0
                 self.brake = random.randint(60, 100)
-            else: # Accelerating out of corner
+            else: 
                 self.speed = min(320, self.speed + random.randint(10, 20))
                 self.gear = min(8, self.gear + 1 if self.speed % 35 == 0 else self.gear)
                 self.throttle = random.randint(80, 100)
                 self.brake = 0
         else:
-            # Randomly approach a corner
             if random.random() < 0.05: 
                 self.is_braking = True
-                self.corner_timer = random.randint(3, 6) # Time spent braking
+                self.corner_timer = random.randint(3, 6) 
             elif self.is_braking:
                 self.is_braking = False
-                self.corner_timer = random.randint(5, 10) # Time spent accelerating
+                self.corner_timer = random.randint(5, 10) 
             else:
-                # Flat out on a straight
                 self.speed = min(330, self.speed + random.randint(-2, 5))
                 self.gear = 8
                 self.throttle = 100
                 self.brake = 0
+                
+        # 2. Calculate Distance Traveled (Speed in m/s * 0.25 seconds)
+        speed_ms = self.speed / 3.6
+        distance_moved = speed_ms * 0.25
+        self.distance += distance_moved
         
-        return {"speed": self.speed, "gear": self.gear, "throttle": self.throttle, "brake": self.brake}
+        # 3. Handle Lap Completion
+        if self.distance >= self.track_length:
+            self.distance -= self.track_length
+            self.lap += 1
+            
+        # 4. Calculate Lap Percentage (0.0 to 1.0)
+        progress = self.distance / self.track_length
+        
+        return {
+            "speed": self.speed, 
+            "gear": self.gear, 
+            "throttle": self.throttle, 
+            "brake": self.brake,
+            "lap": self.lap,
+            "progress": progress
+        }
 
 async def telemetry_stream():
-    """
-    On race weekends, this function intercepts the FastF1 SignalR stream.
-    If no session is active, it defaults to the GhostCars to keep the UI alive.
-    """
-    hamilton = GhostCar("44", 310)
-    leclerc = GhostCar("16", 308)
+    # Start Leclerc 200 meters ahead of Hamilton so we can see them chasing
+    hamilton = GhostCar("44", 310, 0.0)
+    leclerc = GhostCar("16", 308, 200.0)
     
     while True:
         if len(manager.active_connections) > 0:
-            
-            # TODO: During a live race, replace this ghost data with parsed 
-            # 'CarData.z' packets from the FastF1 SignalRClient.
             payload = {
                 "type": "telemetry",
                 "data": {
@@ -104,7 +119,6 @@ async def telemetry_stream():
             }
             await manager.broadcast(json.dumps(payload))
             
-        # Telemetry broadcasts roughly every 250ms
         await asyncio.sleep(0.25)
 
 @app.on_event("startup")
