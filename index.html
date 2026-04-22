@@ -164,6 +164,16 @@ body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;min
 .cal-winner{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold);margin-top:5px;font-weight:600;display:flex;align-items:center;gap:5px}
 .cal-winner::before{content:'★';font-size:8px}
 
+/* LIVE TRACK MAP (NEW) */
+.track-section{max-width:1440px;margin:0 auto;padding:48px 36px 0}
+.map-container{border:2px solid var(--ink);background:var(--carbon);padding:24px;position:relative;overflow:hidden;height:450px;display:flex;align-items:center;justify-content:center}
+.map-overlay{position:absolute;top:24px;left:24px;display:flex;gap:24px;z-index:10;}
+.map-hud{background:rgba(0,0,0,0.8);border-left:3px solid #E8002D;padding:14px 18px;color:#fff;}
+.hud-driver{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:6px;}
+.hud-speed{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;}
+.hud-speed span{font-size:11px;color:#888;font-weight:500;}
+.hud-lap{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:6px;font-weight:600;color:var(--gold)}
+
 /* MAIN STANDINGS GRID */
 .main-section{max-width:1440px;margin:0 auto;padding:56px 36px 0}
 .main-grid{display:grid;grid-template-columns:1.1fr 1fr 1fr;border:2px solid var(--ink);background:var(--paper)}
@@ -229,7 +239,7 @@ body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;min
 .news-item.lead .news-headline{font-size:17px;font-weight:700}
 .news-body{font-size:12px;line-height:1.6;color:var(--ink-2)}
 
-/* DEEP DIVE ANALYTICS GRID (NEW) */
+/* DEEP DIVE ANALYTICS GRID */
 .analytics-section{max-width:1440px;margin:0 auto;padding:48px 36px 0}
 .analytics-grid{display:grid;grid-template-columns:1.5fr 1fr;border:2px solid var(--ink);background:var(--carbon)}
 .ana-col{border-right:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column}
@@ -270,7 +280,7 @@ body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;min
 .stat.ham-stat{border-left:3px solid var(--ferrari)}
 .stat.ham-stat .stat-label{color:rgba(232,0,45,.8)}
 
-/* FULL DRIVER STATS (NEW) */
+/* FULL DRIVER STATS */
 .dstats-section{max-width:1440px;margin:0 auto;padding:56px 36px 0}
 .section-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:22px;padding-bottom:16px;border-bottom:2px solid var(--ink)}
 .section-title{font-family:'Playfair Display',serif;font-size:32px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
@@ -306,7 +316,7 @@ table.ds tbody td:last-child{border-right:none}
 .pb-bronze{background:rgba(176,108,48,.18);color:#a06028}
 .dtdot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;margin-right:5px}
 
-/* LIVE NEWS SECTION (NEW) */
+/* LIVE NEWS SECTION */
 .news-section{max-width:1440px;margin:0 auto;padding:56px 36px 0}
 .news-feed-grid{display:grid;grid-template-columns:1.4fr 1fr;border:2px solid var(--ink)}
 .news-feed-col{display:flex;flex-direction:column}
@@ -343,7 +353,7 @@ table.ds tbody td:last-child{border-right:none}
 
 /* RESPONSIVE */
 @media(max-width:980px){
-  .hero,.race-hero,.cal-section,.main-section,.stats-ribbon,.footer-wrap,.fav-banner,.dstats-section,.news-section, .analytics-section{padding-left:20px;padding-right:20px}
+  .hero,.race-hero,.cal-section,.main-section,.stats-ribbon,.footer-wrap,.fav-banner,.dstats-section,.news-section, .analytics-section, .track-section{padding-left:20px;padding-right:20px}
   .api-bar{padding-left:20px;padding-right:20px}
   .hero{padding-top:36px}
   .hero-top{flex-direction:column;gap:18px;align-items:flex-start}
@@ -369,6 +379,7 @@ table.ds tbody td:last-child{border-right:none}
   .cd-num{font-size:26px}.countdown{gap:4px}.cd-cell{padding:12px 4px 10px}
   .fav-name{font-size:26px}.stats-grid{grid-template-columns:1fr}
   .stat{border-right:none!important;border-bottom:1px solid rgba(255,255,255,.08)}
+  .map-overlay { flex-direction: column; gap: 10px; }
 }
 </style>
 </head>
@@ -469,6 +480,36 @@ table.ds tbody td:last-child{border-right:none}
   <div class="cal-strip-wrap">
     <div class="cal-progress-track"><div class="cal-progress-fill" id="cal-prog" style="width:0%"></div></div>
     <div class="cal-strip" id="calStrip"><div class="lp"><div class="spinner"></div>Loading calendar…</div></div>
+  </div>
+</section>
+
+<section class="track-section">
+  <div class="section-head">
+    <div class="section-title">Live <em>Telemetry Map</em></div>
+    <div class="section-sub">Positional Data · Synchronized</div>
+  </div>
+  <div class="map-container">
+    <div class="map-overlay">
+        <div class="map-hud">
+           <div class="hud-driver">HAMILTON #44</div>
+           <div class="hud-speed"><span id="tm-spd-44">0</span> <span>KM/H</span></div>
+           <div class="hud-lap">LAP <span id="tm-lap-44">0</span></div>
+        </div>
+        <div class="map-hud">
+           <div class="hud-driver">LECLERC #16</div>
+           <div class="hud-speed"><span id="tm-spd-16">0</span> <span>KM/H</span></div>
+           <div class="hud-lap">LAP <span id="tm-lap-16">0</span></div>
+        </div>
+    </div>
+    
+    <svg id="track-svg" viewBox="0 0 1000 400" style="width:100%;height:auto;max-height:400px;">
+        <path id="track-path" d="M 200 300 L 700 300 Q 850 300 850 200 Q 850 100 700 100 L 400 100 Q 300 100 250 150 Q 200 200 150 200 L 100 200 Q 50 200 50 250 Q 50 300 200 300 Z" fill="none" stroke="#1d1d1d" stroke-width="30" stroke-linejoin="round" stroke-linecap="round"/>
+        <path d="M 200 300 L 700 300 Q 850 300 850 200 Q 850 100 700 100 L 400 100 Q 300 100 250 150 Q 200 200 150 200 L 100 200 Q 50 200 50 250 Q 50 300 200 300 Z" fill="none" stroke="#333" stroke-width="2" stroke-dasharray="10,10"/>
+        <line x1="450" y1="280" x2="450" y2="320" stroke="#fff" stroke-width="4"/>
+        
+        <g id="car-grp-44"><circle id="car-dot-44" cx="450" cy="300" r="8" fill="#E8002D"/><text id="car-lbl-44" x="450" y="288" fill="#fff" font-family="'JetBrains Mono',monospace" font-size="10" font-weight="700" text-anchor="middle">44</text></g>
+        <g id="car-grp-16"><circle id="car-dot-16" cx="450" cy="300" r="8" fill="#E8002D"/><text id="car-lbl-16" x="450" y="288" fill="#fff" font-family="'JetBrains Mono',monospace" font-size="10" font-weight="700" text-anchor="middle">16</text></g>
+    </svg>
   </div>
 </section>
 
@@ -637,17 +678,9 @@ table.ds tbody td:last-child{border-right:none}
 
 <script>
 'use strict';
-/* ═══════════════════════════════════════════════
-   MANDAR'S PIT WALL — F1 Data Engine v4
-   API: Jolpica (https://api.jolpi.ca/ergast/f1/)
-   Dynamic year fetched to prevent staleness
-═══════════════════════════════════════════════ */
-
-// Automatically target the current year
 const SEASON = new Date().getFullYear();
 let _cdInt = null;
 
-/* Update DOM labels with dynamic year */
 document.getElementById('tk-year').textContent = SEASON;
 document.getElementById('tk-year-2').textContent = SEASON;
 document.getElementById('hero-edition').textContent = `Personal Edition · F1 ${SEASON}`;
@@ -655,8 +688,6 @@ document.getElementById('ham-wins-lbl').textContent = `Wins '${String(SEASON).sl
 document.getElementById('race-season-val').textContent = SEASON;
 document.getElementById('s-ham-lbl').textContent = `Hamilton Points ${SEASON}`;
 
-
-/* ── Team colours ── */
 const TC = {
   'mclaren':'#FF8000','red bull':'#3671C6','ferrari':'#E8002D',
   'mercedes':'#27F4D2','aston martin':'#229971','alpine':'#0093CC',
@@ -667,24 +698,18 @@ const TC = {
 const tc = (n='') => { const l=n.toLowerCase(); for(const[k,v]of Object.entries(TC)) if(l.includes(k)) return v; return '#8a8172'; };
 const tcText = (c) => c==='#27F4D2'?'#000':'#fff';
 
-/* ── Nationality flags ── */
 const NF = {british:'🇬🇧',dutch:'🇳🇱',monegasque:'🇲🇨',spanish:'🇪🇸',australian:'🇦🇺',mexican:'🇲🇽',french:'🇫🇷',canadian:'🇨🇦',german:'🇩🇪',danish:'🇩🇰',finnish:'🇫🇮',american:'🇺🇸',japanese:'🇯🇵',chinese:'🇨🇳',thai:'🇹🇭',argentinian:'🇦🇷',brazilian:'🇧🇷',italian:'🇮🇹',austrian:'🇦🇹','new zealander':'🇳🇿',newzealander:'🇳🇿',swiss:'🇨🇭'};
 const nf = (n='') => NF[n.toLowerCase()]||'🏳️';
 
-/* ── Country flags ── */
 const CF = {australia:'🇦🇺',china:'🇨🇳',japan:'🇯🇵',bahrain:'🇧🇭','saudi arabia':'🇸🇦','united states':'🇺🇸',canada:'🇨🇦',monaco:'🇲🇨',spain:'🇪🇸',austria:'🇦🇹','great britain':'🇬🇧',belgium:'🇧🇪',hungary:'🇭🇺',netherlands:'🇳🇱',italy:'🇮🇹',azerbaijan:'🇦🇿',singapore:'🇸🇬',mexico:'🇲🇽',brazil:'🇧🇷',qatar:'🇶🇦','abu dhabi':'🇦🇪'};
 const cf = (c='') => { const l=c.toLowerCase(); for(const[k,v]of Object.entries(CF)) if(l.includes(k)) return v; return '🏁'; };
-
-/* ── Months ── */
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-/* ── API status ── */
 const setStatus = (state, msg) => {
   document.getElementById('api-dot').className = 'api-dot ' + state;
   document.getElementById('api-txt').textContent = msg;
 };
 
-/* ── Greeting ── */
 (()=>{
   const now = new Date(), h = now.getHours();
   document.getElementById('greeting').textContent = (h<12?'Good morning':h<17?'Good afternoon':'Good evening') + ', Mandar';
@@ -692,12 +717,8 @@ const setStatus = (state, msg) => {
   document.getElementById('dateline').textContent = D[now.getDay()]+' · '+String(now.getDate()).padStart(2,'0')+' '+MONTHS[now.getMonth()]+' · '+now.getFullYear();
 })();
 
-
-/* ── Countdown ── */
 function startCD(target, sessionName) {
   if(_cdInt) clearInterval(_cdInt);
-  
-  // Update the label to show exactly which session we are counting down to
   const labelEl = document.querySelector('.countdown-label');
   if (labelEl) labelEl.innerHTML = `Next Session: ${sessionName} In`;
 
@@ -707,7 +728,6 @@ function startCD(target, sessionName) {
     if(d<=0){
       ['cd-d','cd-h','cd-m','cd-s'].forEach(id=>document.getElementById(id).textContent='00');
       clearInterval(_cdInt);
-      // Automatically refresh the dashboard when a session starts
       setTimeout(() => loadAll(false), 5000); 
       return;
     }
@@ -719,12 +739,9 @@ function startCD(target, sessionName) {
   tick(); _cdInt = setInterval(tick,1000);
 }
 
-/* ── NEXT RACE & SESSION LOGIC ── */
 function renderNextRace(data) {
   const races = data?.MRData?.RaceTable?.Races || [];
   const now = new Date();
-
-  // 1. Find the next upcoming race weekend
   const nextRace = races.find(r => new Date(r.date + 'T' + (r.time || '12:00:00Z')) > now);
 
   if (!nextRace) {
@@ -732,9 +749,7 @@ function renderNextRace(data) {
     return;
   }
 
-  // 2. Extract all individual sessions for this weekend
   const sessions = [];
-
   const addSession = (name, obj) => {
     if (obj && obj.date && obj.time) {
       sessions.push({ name: name, time: new Date(obj.date + 'T' + obj.time).getTime() });
@@ -752,24 +767,19 @@ function renderNextRace(data) {
     sessions.push({ name: 'Race', time: new Date(nextRace.date + 'T' + nextRace.time).getTime() });
   }
 
-  // 3. Find the closest session that is in the future
   sessions.sort((a, b) => a.time - b.time);
   const nextSession = sessions.find(s => s.time > now.getTime());
 
-  // Fallbacks just in case the API is missing session data
   const targetTime = nextSession ? nextSession.time : new Date(nextRace.date + 'T' + (nextRace.time || '14:00:00Z')).getTime();
   const targetName = nextSession ? nextSession.name : 'Race';
 
-  // Start the countdown
   startCD(targetTime, targetName);
 
-  // Update UI Elements
   document.getElementById('next-round-lbl').textContent = `◆ Round ${nextRace.round} of ${races.length} · Up Next`;
   document.getElementById('next-flag').textContent = cf(nextRace.Circuit?.Location?.country || '');
   document.getElementById('next-name').innerHTML = nextRace.raceName.replace(' Grand Prix', '').trim() + ' <em>Grand Prix</em>';
   document.getElementById('next-circuit').textContent = nextRace.Circuit?.circuitName || '';
 
-  // Format the date/time natively to Indian Standard Time (IST)
   const localDate = new Date(targetTime);
   const timeOptions = { weekday: 'short', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
   
@@ -778,31 +788,19 @@ function renderNextRace(data) {
   document.getElementById('next-round-num').textContent = `R${nextRace.round}/${races.length}`;
 }
 
-/* ════════════════════════════════════
-   JOLPICA API
-════════════════════════════════════ */
 async function jol(path) {
   const url = `https://api.jolpi.ca/ergast/f1/${path}.json?limit=100`;
-  const r = await fetch(url, {
-    headers: {'Accept':'application/json'},
-    signal: AbortSignal.timeout(12000)
-  });
+  const r = await fetch(url, { headers: {'Accept':'application/json'}, signal: AbortSignal.timeout(12000) });
   if(!r.ok) throw new Error(`HTTP ${r.status}`);
-  const json = await r.json();
-  return json;
+  return await r.json();
 }
 
-/* ════════════════════════════════════
-   NEW: DEEP DIVE ANALYTICS
-════════════════════════════════════ */
 async function fetchOpenF1Tyres() {
     try {
-        // Fetch sessions to get the latest race key
         const sesRes = await fetch('https://api.openf1.org/v1/sessions?session_type=Race');
         const sessions = await sesRes.json();
         const latestSession = sessions[sessions.length - 1].session_key;
         
-        // Fetch stints for HAM (44) and LEC (16)
         const stintRes = await fetch(`https://api.openf1.org/v1/stints?session_key=${latestSession}`);
         const allStints = await stintRes.json();
         
@@ -810,13 +808,10 @@ async function fetchOpenF1Tyres() {
             const driverStints = allStints.filter(s => s.driver_number === driverNum);
             if (!driverStints.length) return `<div class="stint-bars"><div class="stint-segment" style="background:#333;width:100%;color:#fff;">No Data</div></div>`;
             
-            let totalLaps = driverStints.reduce((sum, s) => sum + (s.tyre_age_at_start ? s.tyre_age_at_start : 0), 0); // Simplified lap count
-            if(totalLaps === 0) totalLaps = 50; // fallback scale
-            
             let html = '<div class="stint-bars">';
             driverStints.forEach(s => {
                 const color = `var(--tyre-${s.compound.toLowerCase()})`;
-                const width = Math.max(10, (s.tyre_age_at_start ? s.tyre_age_at_start : 15)); // Approximate visual width
+                const width = Math.max(10, (s.tyre_age_at_start ? s.tyre_age_at_start : 15));
                 const textColor = s.compound === 'HARD' ? '#000' : '#fff';
                 html += `<div class="stint-segment" style="background:${color}; width:${width}%; color:${textColor};">${s.compound[0]}</div>`;
             });
@@ -918,9 +913,6 @@ async function renderQualiH2H() {
     } catch(e) { console.error(e); }
 }
 
-/* ════════════════════════════════════
-   MAIN LOAD
-════════════════════════════════════ */
 async function loadAll(manual=false) {
   setStatus('loading', manual?'Manual refresh…':'Fetching live F1 data…');
   let errors = 0;
@@ -947,14 +939,11 @@ async function loadAll(manual=false) {
 
   if(D) enrichStats();
   loadNews();
-  
-  // 👉 THIS ENSURES THE NEW CHARTS AND STATS ACTUALLY RUN
   renderConstructorsChart();
   renderQualiH2H();
   fetchOpenF1Tyres();
 }
 
-/* ── CALENDAR ── */
 function renderCalendar(data) {
   const races = data?.MRData?.RaceTable?.Races||[];
   if(!races.length) return;
@@ -982,7 +971,6 @@ function renderCalendar(data) {
   setTimeout(()=>{const n=strip.querySelector('.cal-round.next');if(n)strip.scrollTo({left:n.offsetLeft-60,behavior:'smooth'});},2000);
 }
 
-/* ── DRIVER STANDINGS ── */
 function renderDrivers(data) {
   const list=data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings||[];
   const round=data?.MRData?.StandingsTable?.StandingsLists?.[0]?.round||'—';
@@ -1010,7 +998,6 @@ style="--team-color:${color};animation-delay:${4.5+i*.06}s">
   if(ham){document.getElementById('ham-pts').textContent=ham.points;document.getElementById('ham-pos').textContent='P'+ham.position;document.getElementById('ham-wins-s').textContent=ham.wins||'0';}
 }
 
-/* ── CONSTRUCTOR STANDINGS ── */
 function renderConstructors(data) {
   const list=data?.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings||[];
   const round=data?.MRData?.StandingsTable?.StandingsLists?.[0]?.round||'—';
@@ -1031,7 +1018,6 @@ function renderConstructors(data) {
   }).join('');
 }
 
-/* ── LAST RACE ── */
 function renderLastRace(data) {
   const races=data?.MRData?.RaceTable?.Races||[];
   if(!races.length) return;
@@ -1046,7 +1032,6 @@ function renderLastRace(data) {
   }).join('')||'<div class="lp">No result data</div>';
 }
 
-/* ── STATS RIBBON ── */
 function renderStats(dD,cD,lD) {
   const drv=dD?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings||[];
   const con=cD?.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings||[];
@@ -1059,7 +1044,6 @@ function renderStats(dD,cD,lD) {
   if(races.length){const w=races[0].Results?.[0];if(w){document.getElementById('s-winner').textContent=w.Driver.familyName;document.getElementById('s-winner-sub').textContent=races[0].raceName;}}
 }
 
-/* ── FULL DRIVER STATS TABLE ── */
 function renderDriverStats(data) {
   const list=data?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings||[];
   const round=data?.MRData?.StandingsTable?.StandingsLists?.[0]?.round||'—';
@@ -1093,7 +1077,6 @@ function renderDriverStats(data) {
   }).join('');
 }
 
-/* ── ENRICH: Podiums + Poles ── */
 async function enrichStats() {
   try {
     const [podR, polR] = await Promise.allSettled([
@@ -1122,7 +1105,6 @@ async function enrichStats() {
   } catch(e) { console.warn('[Enrich]',e); }
 }
 
-/* ── TICKER ── */
 function renderTicker(dD,cD,lD) {
   const drv=dD?.MRData?.StandingsTable?.StandingsLists?.[0]?.DriverStandings||[];
   const con=cD?.MRData?.StandingsTable?.StandingsLists?.[0]?.ConstructorStandings||[];
@@ -1143,11 +1125,7 @@ function renderTicker(dD,cD,lD) {
   document.getElementById('tkTrack').innerHTML=h+h;
 }
 
-/* ════════════════════════════════════
-   LIVE NEWS — rss2json.com proxy
-════════════════════════════════════ */
 const RSS2J = 'https://api.rss2json.com/v1/api.json';
-
 const FEEDS = [
   { id:'f1-news', url:'https://www.formula1.com/content/fom-website/en/latest/all.xml', label:'F1.com' },
   { id:'ms-news', url:'https://the-race.com/feed/', label:'The Race' },
@@ -1204,7 +1182,7 @@ function stripHtml(h){const d=document.createElement('div');d.innerHTML=h;return
 function timeSince(d){const m=Math.floor((Date.now()-d)/60000);if(m<1)return'Just now';if(m<60)return m+'m ago';const hr=Math.floor(m/60);if(hr<24)return hr+'h ago';return Math.floor(hr/24)+'d ago';}
 
 /* ════════════════════════════════════
-   LIVE TELEMETRY (Render WebSocket)
+   LIVE TELEMETRY & TRACK MAP
 ════════════════════════════════════ */
 const WS_URL = 'wss://f1-uso2.onrender.com/ws/telemetry';
 let telemetrySocket;
@@ -1221,9 +1199,17 @@ function connectTelemetry() {
   telemetrySocket.onmessage = (event) => {
     try {
       const payload = JSON.parse(event.data);
-      if (payload.type === 'telemetry' && payload.data['44']) {
-        const hamData = payload.data['44'];
-        updateLiveTicker(hamData);
+      if (payload.type === 'telemetry') {
+        
+        // Handle Hamilton
+        if(payload.data['44']) {
+           updateLiveTicker(payload.data['44']);
+           updateLiveMap('44', payload.data['44']);
+        }
+        // Handle Leclerc
+        if(payload.data['16']) {
+           updateLiveMap('16', payload.data['16']);
+        }
       }
     } catch(e) {
       console.warn('[Telemetry] Error parsing data:', e);
@@ -1246,7 +1232,7 @@ function updateLiveTicker(data) {
   const liveTick = `
     <span class="tick">
       <span class="sym" style="color:#22c55e">LIVE 44</span>
-      <span class="val">${data.speed} KM/H</span>
+      <span class="val">${Math.floor(data.speed)} KM/H</span>
       <span class="pts">GEAR ${data.gear} · THR ${data.throttle}%</span>
     </span>
     <span class="tick tick-dot">◆</span>
@@ -1260,9 +1246,36 @@ function updateLiveTicker(data) {
     );
   }
 }
+
+// Map the lap percentage to X/Y coordinates on the SVG path
+function updateLiveMap(driverNo, data) {
+    const trackPath = document.getElementById('track-path');
+    if(!trackPath) return;
+    
+    // Get the exact X/Y coordinate based on lap percentage
+    const trackLength = trackPath.getTotalLength();
+    const point = trackPath.getPointAtLength(data.progress * trackLength);
+    
+    // Move the Car Dot & Label
+    const carDot = document.getElementById('car-dot-' + driverNo);
+    const carLbl = document.getElementById('car-lbl-' + driverNo);
+    
+    if(carDot && carLbl) {
+        carDot.setAttribute('cx', point.x);
+        carDot.setAttribute('cy', point.y);
+        carLbl.setAttribute('x', point.x);
+        carLbl.setAttribute('y', point.y - 12);
+    }
+    
+    // Update the HUD Speed/Lap Text
+    const hudSpd = document.getElementById('tm-spd-' + driverNo);
+    const hudLap = document.getElementById('tm-lap-' + driverNo);
+    
+    if(hudSpd) hudSpd.textContent = Math.floor(data.speed);
+    if(hudLap) hudLap.textContent = data.lap;
+}
   
 /* ── BOOT ── */
-// 👉 THIS IS THE CRITICAL MISSING LINE THAT STARTS THE RENDER WEBSOCKET
 connectTelemetry(); 
 loadAll();
 setInterval(()=>loadAll(false), 5*60*1000); 
