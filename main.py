@@ -23,12 +23,11 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
-        logging.info(f"Client connected. Total: {len(self.active_connections)}")
+        logging.info("Client connected.")
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logging.info("Client disconnected.")
 
     async def broadcast(self, message: str):
         for connection in self.active_connections:
@@ -39,27 +38,27 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# --- 20-CAR GHOST SIMULATOR ---
 class GhostCar:
-    def __init__(self, driver_no, base_speed, start_distance=0.0):
+    def __init__(self, driver_no, team_id, base_speed, start_distance):
         self.no = driver_no
+        self.team = team_id
         self.speed = base_speed
         self.gear = 8
         self.throttle = 100
         self.brake = 0
         self.is_braking = False
         self.corner_timer = 0
-        
-        # --- NEW: Positional Tracking ---
         self.lap = 1
         self.distance = start_distance 
-        self.track_length = 5793.0 # Approx length of Monza in meters
+        self.track_length = 5400.0 # Average track length in meters
 
     def update(self):
-        # 1. Calculate Speed & Gear changes (Braking/Accelerating)
+        # Simulate Driving Physics
         if self.corner_timer > 0:
             self.corner_timer -= 1
             if self.is_braking:
-                self.speed = max(80, self.speed - random.randint(15, 30))
+                self.speed = max(90, self.speed - random.randint(15, 30))
                 self.gear = max(2, self.gear - 1 if self.speed % 40 == 0 else self.gear)
                 self.throttle = 0
                 self.brake = random.randint(60, 100)
@@ -69,56 +68,58 @@ class GhostCar:
                 self.throttle = random.randint(80, 100)
                 self.brake = 0
         else:
-            if random.random() < 0.05: 
+            if random.random() < 0.04: 
                 self.is_braking = True
-                self.corner_timer = random.randint(3, 6) 
+                self.corner_timer = random.randint(3, 5) 
             elif self.is_braking:
                 self.is_braking = False
-                self.corner_timer = random.randint(5, 10) 
+                self.corner_timer = random.randint(4, 8) 
             else:
-                self.speed = min(330, self.speed + random.randint(-2, 5))
+                self.speed = min(335, self.speed + random.randint(-2, 5))
                 self.gear = 8
                 self.throttle = 100
                 self.brake = 0
                 
-        # 2. Calculate Distance Traveled (Speed in m/s * 0.25 seconds)
+        # Calculate Position
         speed_ms = self.speed / 3.6
-        distance_moved = speed_ms * 0.25
-        self.distance += distance_moved
+        self.distance += speed_ms * 0.25
         
-        # 3. Handle Lap Completion
         if self.distance >= self.track_length:
             self.distance -= self.track_length
             self.lap += 1
             
-        # 4. Calculate Lap Percentage (0.0 to 1.0)
-        progress = self.distance / self.track_length
-        
         return {
+            "no": self.no,
+            "team": self.team,
             "speed": self.speed, 
             "gear": self.gear, 
             "throttle": self.throttle, 
             "brake": self.brake,
             "lap": self.lap,
-            "progress": progress
+            "progress": self.distance / self.track_length
         }
 
+# Generate the 2026 Grid spaced out around the track
+GRID = [
+    ("1", "redbull", 312, 5000), ("11", "redbull", 310, 4800),
+    ("4", "mclaren", 311, 4600), ("81", "mclaren", 309, 4400),
+    ("16", "ferrari", 311, 4200), ("44", "ferrari", 310, 4000),
+    ("63", "mercedes", 308, 3800), ("12", "mercedes", 307, 3600),
+    ("14", "aston", 305, 3400), ("18", "aston", 304, 3200),
+    ("10", "alpine", 302, 3000), ("31", "alpine", 301, 2800),
+    ("23", "williams", 303, 2600), ("2", "williams", 300, 2400),
+    ("22", "racingbulls", 303, 2200), ("3", "racingbulls", 301, 2000),
+    ("77", "sauber", 298, 1800), ("24", "sauber", 297, 1600),
+    ("20", "haas", 299, 1400), ("27", "haas", 298, 1200)
+]
+
+cars = [GhostCar(no, team, spd, dist) for no, team, spd, dist in GRID]
+
 async def telemetry_stream():
-    # Start Leclerc 200 meters ahead of Hamilton so we can see them chasing
-    hamilton = GhostCar("44", 310, 0.0)
-    leclerc = GhostCar("16", 308, 200.0)
-    
     while True:
         if len(manager.active_connections) > 0:
-            payload = {
-                "type": "telemetry",
-                "data": {
-                    "44": hamilton.update(),
-                    "16": leclerc.update()
-                }
-            }
-            await manager.broadcast(json.dumps(payload))
-            
+            car_data = {car.no: car.update() for car in cars}
+            await manager.broadcast(json.dumps({"type": "telemetry", "data": car_data}))
         await asyncio.sleep(0.25)
 
 @app.on_event("startup")
